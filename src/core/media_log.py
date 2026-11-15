@@ -14,6 +14,23 @@ _stderr_saved = None
 _stderr_null = None
 
 
+def listen_debug_enabled() -> bool:
+    """True when Listen should print player details to the terminal."""
+    return os.environ.get("ABCS_LISTEN_DEBUG", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def listen_debug(message: str) -> None:
+    """Print one Listen line to stdout. Stderr is hidden while Listen is open."""
+    if not listen_debug_enabled():
+        return
+    print(f"[Listen] {message}", flush=True)
+
+
 def silence_preview_media_logs() -> None:
     """Turn down FFmpeg and Qt multimedia logs. Safe to call more than once."""
     global _env_applied

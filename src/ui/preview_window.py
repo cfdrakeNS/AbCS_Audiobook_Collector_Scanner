@@ -55,6 +55,8 @@ from src.core.audio_launcher import (
     resolve_preview_playlist,
 )
 from src.core.media_log import (
+    listen_debug,
+    listen_debug_enabled,
     mute_preview_stderr,
     restore_preview_stderr,
     silence_preview_media_logs,
@@ -160,6 +162,32 @@ def _uses_gstreamer_backend() -> bool:
         return _qt_version_tuple() < (6, 5)
     except (TypeError, ValueError):
         return True
+
+
+def _debug_value_name(value) -> str:
+    name = getattr(value, "name", None)
+    if name:
+        return str(name)
+    return str(value)
+
+
+def _debug_audio_outputs() -> None:
+    try:
+        from PySide6.QtMultimedia import QMediaDevices
+    except Exception as exc:
+        listen_debug(f"audio outputs unavailable: {exc}")
+        return
+    try:
+        default = QMediaDevices.defaultAudioOutput()
+        is_null = getattr(default, "isNull", None)
+        default_name = "none"
+        if not (callable(is_null) and is_null()):
+            default_name = default.description()
+        names = [device.description() for device in QMediaDevices.audioOutputs()]
+    except Exception as exc:
+        listen_debug(f"audio outputs failed: {exc}")
+        return
+    listen_debug(f"audio default={default_name!r} outputs={names}")
 
 
 def _configure_preview_backend() -> None:
@@ -449,12 +477,15 @@ def show_preview(
     except Exception:
         pass
     try:
-        silence_preview_media_logs()
         _configure_preview_backend()
         from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 
-        silence_preview_media_logs()
-        mute_preview_stderr()
+        if listen_debug_enabled():
+            listen_debug("debug on")
+            _debug_audio_outputs()
+        else:
+            silence_preview_media_logs()
+            mute_preview_stderr()
     except ImportError:
         return False, "Playing books needs Qt Multimedia."
 
@@ -1092,6 +1123,7 @@ class PreviewWindow(AccessibleDialog):
         self._listened_ms = 0
         self._playing_since = time.monotonic()
         self._load_current_file(autoplay=True)
+        self._debug_player("open")
         self.set_status(_playback_status("Playing"), announce=True)
         self._sync_play_button()
         self._sync_transport_enabled()
@@ -1250,6 +1282,7 @@ class PreviewWindow(AccessibleDialog):
             target = min(target, duration)
         self._pending_seek_ms = target
         self._flush_pending_seek()
+        self._debug_player(f"seek {target}")
         self._set_slider_value(target)
         self._update_position_label(target)
         if announce:
@@ -1467,6 +1500,41 @@ class PreviewWindow(AccessibleDialog):
             self._pause_listen_clock()
         self._sync_play_button()
         self._flush_pending_seek()
+        self._debug_player(f"state {_debug_value_name(state)}")
+
+    def _debug_player(self, event: str) -> None:
+        """Terminal line for ABCS_LISTEN_DEBUG. Quiet unless that variable is set."""
+        if not listen_debug_enabled() or self._player is None:
+            return
+        position = duration = "unknown"
+        try:
+            position = str(int(self._player.position()))
+        except Exception:
+            pass
+        try:
+            duration = str(int(self._player.duration()))
+        except Exception:
+            pass
+        error = ""
+        error_fn = getattr(self._player, "errorString", None)
+        if callable(error_fn):
+            try:
+                error = error_fn() or ""
+            except Exception:
+                error = ""
+        state_name = "unknown"
+        state_fn = getattr(self._player, "playbackState", None)
+        if callable(state_fn):
+            try:
+                state_name = _debug_value_name(state_fn())
+            except Exception:
+                state_name = "error"
+        listen_debug(
+            f"{event} status={_debug_value_name(self._media_status())} "
+            f"state={state_name} pos={position} dur={duration} "
+            f"pending={self._pending_seek_ms} want_play={self._want_play} "
+            f"error={error!r}"
+        )
 
     def _bind_default_audio_device(self) -> None:
         """Use the desktop's current output. A null device plays silence on Linux."""
@@ -1550,6 +1618,7 @@ class PreviewWindow(AccessibleDialog):
             return
         ready = self._playback_ready()
         if ready is False:
+            self._debug_player("waiting for media")
             return
         self._continuing_playback = True
         try:
@@ -1571,6 +1640,7 @@ class PreviewWindow(AccessibleDialog):
                     play = getattr(self._player, "play", None)
                     if callable(play):
                         play()
+                        self._debug_player("play called")
             self._flush_pending_seek()
         finally:
             self._continuing_playback = False
@@ -1615,11 +1685,17 @@ class PreviewWindow(AccessibleDialog):
 
         if self._player is None or self._closing:
             return
+        if status == QMediaPlayer.MediaStatus.InvalidMedia:
+            self._debug_player("media InvalidMedia")
         if status in (
             QMediaPlayer.MediaStatus.LoadedMedia,
             QMediaPlayer.MediaStatus.BufferedMedia,
             QMediaPlayer.MediaStatus.BufferingMedia,
         ):
+            status_name = _debug_value_name(status)
+            if status_name != getattr(self, "_debug_media_status", ""):
+                self._debug_media_status = status_name
+                self._debug_player(f"media {status_name}")
             self._continue_playback()
         if status == QMediaPlayer.MediaStatus.EndOfMedia:
             if self._playlist_index < len(self._playlist) - 1:
@@ -1643,6 +1719,7 @@ class PreviewWindow(AccessibleDialog):
 
     def _on_player_error(self, _error, message: str = ""):
         text = message or "Could not play this audiobook."
+        self._debug_player(f"player error {_debug_value_name(_error)}: {text}")
         self.set_status(text, announce=True)
         exec_styled_message_box(
             self,
