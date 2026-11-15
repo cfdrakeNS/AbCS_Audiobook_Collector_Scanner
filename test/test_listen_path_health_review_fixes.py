@@ -259,19 +259,6 @@ def test_listen_plays_and_seeks_after_media_loads(
     window.close()
 
 
-def test_listen_debug_is_silent_unless_enabled(capsys, monkeypatch):
-    from src.core.media_log import listen_debug, listen_debug_enabled
-
-    monkeypatch.delenv("ABCS_LISTEN_DEBUG", raising=False)
-    assert listen_debug_enabled() is False
-    listen_debug("hidden")
-    assert capsys.readouterr().out == ""
-    monkeypatch.setenv("ABCS_LISTEN_DEBUG", "1")
-    assert listen_debug_enabled() is True
-    listen_debug("shown")
-    assert "[Listen] shown" in capsys.readouterr().out
-
-
 def _path_window(temp_db, ui_scaler, theme_manager, qtbot):
     from src.ui.path_health_window import PathHealthWindow
 

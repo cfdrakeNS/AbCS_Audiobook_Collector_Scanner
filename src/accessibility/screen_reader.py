@@ -12,6 +12,13 @@ except ImportError:
     psutil = None
 
 
+# Temporary testing overrides. Set milliseconds, or leave None for the built-in delay.
+TEMP_FOCUS_DELAY_MS = {
+    "orca": None,
+    "narrator": None,
+}
+
+
 _SCREEN_READER_PROCESSES = {
     "jaws.exe": "jaws",
     "jfw.exe": "jaws",
@@ -45,6 +52,9 @@ def get_screen_reader_focus_delay_ms():
     Returns the focus restoration delay for the detected screen reader.
     """
     reader_name = get_active_screen_reader()
+    override = TEMP_FOCUS_DELAY_MS.get(reader_name)
+    if override is not None:
+        return int(override)
     return {
         "jaws": 300,
         "nvda": 1500,

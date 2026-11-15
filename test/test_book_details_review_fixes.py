@@ -356,6 +356,50 @@ def test_page_down_confirms_typed_read_date_before_loading_next_book(
         window.close()
 
 
+def test_escape_in_view_mode_saves_read_date(
+    temp_db, ui_scaler, theme_manager, classic_fields, prompts
+):
+    books = _make_books(temp_db, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    try:
+        window.read_date.setDate(QDate(2024, 1, 2))
+        window.on_cancel_edit()
+        assert [c["title"] for c in prompts.calls] == ["Confirm Read Date"]
+        assert prompts.calls[0]["default_button"] == QMessageBox.Yes
+        assert _stored_read_date(temp_db, books[0].book_id) == "2024-01-02"
+    finally:
+        window.close()
+
+
+def test_escape_in_view_mode_declined_read_date_is_not_saved(
+    temp_db, ui_scaler, theme_manager, classic_fields, prompts
+):
+    books = _make_books(temp_db, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    prompts.reply = QMessageBox.No
+    try:
+        window.read_date.setDate(QDate(2024, 1, 2))
+        window.on_cancel_edit()
+        assert [c["title"] for c in prompts.calls] == ["Confirm Read Date"]
+        assert _stored_read_date(temp_db, books[0].book_id) == ""
+    finally:
+        window.close()
+
+
+def test_escape_with_date_boxes_saves_read_date(
+    temp_db, ui_scaler, theme_manager, date_combos, prompts
+):
+    books = _make_books(temp_db, count=1)
+    window = _window(temp_db, ui_scaler, theme_manager, books)
+    try:
+        window.read_date.setDate(QDate(2024, 6, 7))
+        window.on_cancel_edit()
+        assert [c["title"] for c in prompts.calls] == ["Confirm Read Date"]
+        assert _stored_read_date(temp_db, books[0].book_id) == "2024-06-07"
+    finally:
+        window.close()
+
+
 def test_page_down_declined_read_date_is_not_saved(
     temp_db, ui_scaler, theme_manager, classic_fields, prompts
 ):

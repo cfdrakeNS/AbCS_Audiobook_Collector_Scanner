@@ -307,7 +307,7 @@ def test_read_date_ok_confirms_with_screen_reader(main_window, monkeypatch, repl
 
     assert [p["title"] for p in prompts] == ["Confirm Read Date"]
     assert f"Mark '{book.title}' as read on 2022-02-28?" == prompts[0]["text"]
-    assert prompts[0]["default_button"] == QMessageBox.No
+    assert prompts[0]["default_button"] == QMessageBox.Yes
     saved = BookQueries(window.db).get_by_id(book.book_id).read_date
     if reply == QMessageBox.Yes:
         assert str(saved) == "2022-02-28"

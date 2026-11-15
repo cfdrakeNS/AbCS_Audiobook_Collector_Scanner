@@ -531,7 +531,7 @@ class MainWindow(QMainWindow):
             date_fields = DateComboFields(dlg, scaled_height=combo_height)
 
             def _confirm_save(new_date: str) -> bool:
-                """Same Yes/No prompt as Book Details. Default is No."""
+                """Same Yes/No prompt as Book Details. Enter confirms the date."""
                 if str(book.read_date or "") == new_date:
                     return True
                 reply = exec_styled_message_box(
@@ -541,7 +541,7 @@ class MainWindow(QMainWindow):
                     title="Confirm Read Date",
                     text=f"Mark '{book.title}' as read on {new_date}?",
                     buttons=QMessageBox.Yes | QMessageBox.No,
-                    default_button=QMessageBox.No,
+                    default_button=QMessageBox.Yes,
                 )
                 if reply == QMessageBox.Yes:
                     return True

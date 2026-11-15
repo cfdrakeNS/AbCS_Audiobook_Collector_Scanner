@@ -282,7 +282,11 @@ class BookDetailsWindow(AccessibleDialog):
                 announce_dialog_closed(self)
                 self.reject()
         else:
-            # No changes, just close
+            # Read date stays editable in view mode and saves on its own.
+            # Escape does not mark the form dirty, so confirm it before closing.
+            self._hide_read_date_calendar()
+            if not self._commit_read_date_before_navigation():
+                return
             announce_dialog_closed(self)
             self.reject()
         if combo_to_restore:
@@ -2379,7 +2383,7 @@ class BookDetailsWindow(AccessibleDialog):
             self._reverting_read_date = False
 
     def _confirm_read_date_change(self, title, new_date) -> bool:
-        """Same Yes/No prompt as the main window read date dialog. Default is No."""
+        """Same Yes/No prompt as the main window read date dialog. Enter confirms a date."""
         if new_date is not None:
             reply = exec_styled_message_box(
                 self,
@@ -2388,7 +2392,7 @@ class BookDetailsWindow(AccessibleDialog):
                 title="Confirm Read Date",
                 text=f"Mark '{title}' as read on {new_date.isoformat()}?",
                 buttons=QMessageBox.Yes | QMessageBox.No,
-                default_button=QMessageBox.No,
+                default_button=QMessageBox.Yes,
             )
         else:
             reply = exec_styled_message_box(
@@ -2401,6 +2405,14 @@ class BookDetailsWindow(AccessibleDialog):
                 default_button=QMessageBox.No,
             )
         return reply == QMessageBox.Yes
+
+    def _hide_read_date_calendar(self) -> None:
+        """Close the popup so a chosen date can be saved on the way out."""
+        if getattr(self, "_read_date_is_masked", False):
+            return
+        calendar = getattr(self.read_date, "calendarWidget", lambda: None)()
+        if calendar is not None and calendar.isVisible():
+            calendar.hide()
 
     def _commit_read_date_before_navigation(self) -> bool:
         """Page Up/Down: confirm a typed read date before another book loads.
