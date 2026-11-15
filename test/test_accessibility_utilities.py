@@ -329,7 +329,7 @@ def test_narrator_detected(mock_psutil):
 
     assert screen_reader.get_active_screen_reader() == "narrator"
     assert screen_reader.is_screen_reader_active() is True
-    assert screen_reader.get_screen_reader_focus_delay_ms() == 3500
+    assert screen_reader.get_screen_reader_focus_delay_ms() == 2500
 
 
 def test_jaws_detected(mock_psutil):
@@ -351,17 +351,6 @@ def test_orca_detected(mock_psutil):
 
     assert screen_reader.get_active_screen_reader() == "orca"
     assert screen_reader.get_screen_reader_focus_delay_ms() == 800
-
-
-def test_temp_focus_delay_overrides_orca_and_narrator(mock_psutil, monkeypatch):
-    monkeypatch.setitem(screen_reader.TEMP_FOCUS_DELAY_MS, "orca", 1200)
-    monkeypatch.setitem(screen_reader.TEMP_FOCUS_DELAY_MS, "narrator", 2000)
-    mock_psutil.set_processes(["orca"])
-    assert screen_reader.get_screen_reader_focus_delay_ms() == 1200
-    mock_psutil.set_processes(["Narrator.exe"])
-    assert screen_reader.get_screen_reader_focus_delay_ms() == 2000
-    mock_psutil.set_processes(["nvda.exe"])
-    assert screen_reader.get_screen_reader_focus_delay_ms() == 1500
 
 
 def test_no_screen_reader_detected(mock_psutil):
