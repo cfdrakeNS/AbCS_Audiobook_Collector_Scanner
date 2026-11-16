@@ -4,16 +4,13 @@ data/graphics/**
 
 # Virtual environment
 .venv/
-.venv-legacy/
 venv/
 env/
 ENV/
 
 # Build outputs
 build/
-build-legacy-hp/
 dist/
-dist-legacy-hp/
 *.exe
 *.pkg
 *.spec

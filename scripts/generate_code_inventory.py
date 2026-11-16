@@ -60,7 +60,7 @@ NOT_INCLUDED = [
     ("test/fixtures/", "SQL schema fixtures for tests"),
     ("build_installer.bat, build_installer.iss", "Windows installer build"),
     ("AbCS.spec, requirements.txt", "Packaging and dependency config"),
-    ("build_linux.sh, build_linux_debug.sh, build_linux_common.sh, build_linux_legacy_hp.sh", "Linux PyInstaller wrappers"),
+    ("build_linux.sh, build_linux_debug.sh, build_linux_common.sh", "Linux PyInstaller wrappers"),
     ("scripts/*.ps1", "GitHub release, history, and repo-cleanup PowerShell helpers"),
     ("Documentation (doc/, help_docs/, README.md, etc.)", "Markdown guides, not code modules"),
 ]

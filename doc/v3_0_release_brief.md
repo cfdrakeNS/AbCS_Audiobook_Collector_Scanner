@@ -64,7 +64,7 @@ User-facing overview: Help topic [What's New in Version 3](../help_docs/28_whats
 - Multi-file Listen shows the file title tag on the part line, or the file name without its extension when the tag is empty (2.41).
 - Import read errors put the reason first and the file name last; Import Book List stores the source "Book List" (old "Bookh_list" rows renamed); the single-file Import picker offers only the checked formats; Preferences window 15% wider (2.42).
 - In-app player no longer loses screen reader focus to an external OS player.
-- Legacy Linux (Qt 6.3 / HP 6000-class): avoid crash by keeping the compatible audio sink.
+- Linux: keep the compatible audio sink so starting video does not crash.
 - Seek slider: stop screen reader from speaking a second raw second count after the time; restore tab to the slider when the accessible interface was invalid.
 - Main-window Listen error/status text matches tests when a title prefix is included.
 

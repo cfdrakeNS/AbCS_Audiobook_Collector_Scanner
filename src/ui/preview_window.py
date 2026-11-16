@@ -179,7 +179,7 @@ def _attach_discard_video_sink(player) -> object | None:
     """Hide video frames on the FFmpeg backend.
 
     Qt 6.3 already sends video to a GStreamer fakesink. Replacing that with
-    QVideoSink starts the GL sink, which crashes the HP 6000 Pro.
+    QVideoSink starts the GL sink, which can abort.
     """
     if _uses_gstreamer_backend():
         return None
