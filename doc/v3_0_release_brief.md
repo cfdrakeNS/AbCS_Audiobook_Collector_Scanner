@@ -1,10 +1,11 @@
-# AbCS Version 3 — Release Brief
+# AbCS Version 3.0 — Release Brief
 
-**Current build:** 3.0 (`APP_VERSION` in `src/build_config.py`). Tester build 2.48 was promoted to 3.0 on November 10, 2026.  
-**Public version:** 3.0.  
+**Current release:** 3.2. This file is the checklist for what shipped in 3.0. Versions 3.1 and 3.2 are later bug fixes. The user notes are in [What's New in Version 3](../help_docs/28_whats_new.md).
+
+**3.0 build:** 3.0. Tester build 2.48 was promoted to 3.0 on November 10, 2026.  
 **Branch:** merged into `main` from `feature/background-fetch-v3`  
 **Testing:** Full pytest suite — 1120 passed (November 10, 2026, build 2.48, before the merge). Help changes in 2.47 passed tester JAWS and NVDA checks. Accessibility review defect fixes passed tester JAWS/NVDA retest (October 4, 2026).  
-**Audience:** Checklist for what ships in **v3.0**.
+**Audience:** Checklist for what shipped in **v3.0**.
 
 User-facing overview: Help topic [What's New in Version 3](../help_docs/28_whats_new.md) (also [whats_new_in_v3.md](whats_new_in_v3.md)). Step-by-step help: bundled `help_docs/` and **Shift+F1** in each window.
 

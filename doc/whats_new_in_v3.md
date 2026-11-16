@@ -1,40 +1,45 @@
 # What's New in Version 3
 
-The same text ships in the app as Help topic **whats new** (`help_docs/28_whats_new.md`). The Windows installer and the Linux package both include `help_docs/`.
+The same text ships in the app as Help topic **whats new** (`../help_docs/28_whats_new.md`). The Windows installer and the Linux package both include `help_docs/`.
 
-Version 3 adds new ways to find, organize, listen to, and maintain your audiobook library. The features below are designed to work with the keyboard and screen readers.
+Version 3.0 adds the features under New Features in version 3.0. All of them work with the keyboard and screen readers. Versions 3.1 and 3.2 are bug fixes and accessibility improvements found after the 3.0 release.
 
-## Find and import books
+## Version 3.2
 
-- Search the web for book details, individually or for a selection of books.
-- Match titles that begin with A, An, or The more reliably.
-- Folder import takes the book title from the Album tag and the author from the Album artist tag, then the Artist tag.
-- Keep the current book selected when sorting or filtering the library.
-- Review and merge duplicate author, series, or genre names when renaming.
+Bug fixes found after 3.0. With a screen reader, Read date and Recently Added were awkward, so they now use Year, Month, and Day boxes. Without a screen reader, those dates stay a calendar. A read date you confirm in Book Details stays saved when you close the window. Listen waits until the file is open before play and seeking. A window is spoken once when it opens. Progress for a long task stays spoken until the next window appears.
 
-## Organize and track listening
+## Version 3.1
 
-- Store and sort books by series number.
-- Set a collection folder for each virtual library (collection).
-- Mark books as Want to Read and filter the list to those books.
-- Save listening progress and resume playback at the saved position.
-- Use the Listen player to move between files, seek, rewind, fast-forward, and change playback speed.
-- View embedded cover art in the player and Book Details.
-- See Want to Read and In Progress totals in Statistics.
+Bug fixes and accessibility improvements found after 3.0. Messages that were repeated are read once, and focus returns to where you were. Escape closes a window, cancels, or asks before unsaved changes are lost. Import stays on its progress window until the work is complete. In Preferences, Enter presses the button that has focus, and Restore Defaults ends with a confirmation.
 
-## Maintain and share your library
+## New Features in version 3.0
 
-- Browse to a book's location from Book Details.
-- Use Manage → Check Book Locations to find blank, missing, or out-of-root paths, review the results, and export them to CSV.
-- Export the visible library list or selected books to CSV or JSON.
-- Import book lists from spreadsheets and review items in the updated Import Detail layout.
+- **Want to Read and In Progress.** Mark books you want to read and filter the list to them. AbCS remembers where you stopped listening, so you can resume a book later.
+- **Listen inside AbCS.** Play a book without leaving AbCS. Move between files, seek, rewind, fast-forward, and change the playback speed.
+- **Check Book Locations.** Find books whose folder is blank or missing, then browse to the right folder to repair the location.
+- **Export your library.** Save your book list, or only the books you selected, to a CSV or JSON file.
+- **Web book details.** Search the web for a book's genre, plot, and other details, for one book or a selection.
+- **Series numbers.** Store each book's place in its series and sort by it.
+- **Collection folders.** Give each collection (virtual library) its own folder.
+- **Cover art.** See a book's embedded cover in the player and in Book Details.
+- **Merge duplicate names.** When you rename an author, series, or genre, review and merge names that are the same.
+- **Import Detail.** A clearer layout for reviewing each item from a book list import.
 
-## Accessibility and workflow improvements
+## Other improvements
 
-- Use consistent keyboard shortcuts for editing, saving, finding, and listening.
-- Follow clearer progress, status, and completion messages during longer operations.
-- Navigate updated dialogs and help topics with the keyboard and screen readers.
-- In Help, open a related guide from the end of each topic by clicking its name or pressing Enter on its line.
-- In Help, the chosen section moves near the top of the text, and the text cursor is a wide bar in your theme's highlight color.
+In Help, the chosen section moves near the top, and you can open a related guide from the end of each topic.
 
-For step-by-step instructions, use the relevant guide in AbCS Help. Press **Shift+F1** in a window for its context-sensitive guide, or **F1** for that window's shortcuts.
+## Where to read more
+
+For step-by-step instructions, open the guide for that window. Press **Shift+F1** in a window for its guide, or **F1** for that window's shortcuts.
+
+## Related help
+
+These guides are in `help_docs/`.
+
+- [Overview](../help_docs/01_overview.md)
+- [Find and Filters](../help_docs/03_find_filters.md)
+- [Listen to a book](../help_docs/26_listen_to_a_book.md)
+- [Check Book Locations](../help_docs/24_check_book_locations.md)
+- [Export Library](../help_docs/25_export_library.md)
+- [Web metadata](../help_docs/07_web_metadata.md)

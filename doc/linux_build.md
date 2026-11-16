@@ -1,11 +1,6 @@
-apt install linux-image-virtual linux-tools-virtual linux-cloud-tools-virtual
-
-
 # Linux Build Guide for AbCS
 
 This guide covers building AbCS (Audiobook Collector Scanner) on Ubuntu for distribution.
-
-For Linux-specific UI fixes and verification status, see [`abcs_linux_fixes.md`](../archive/abcs_linux_fixes.md) (archived; work complete).
 
 ---
 
@@ -110,8 +105,8 @@ cd abcs
 # List available branches
 git branch -a
 
-# Switch to the final branch (or whichever you need)
-git checkout final
+# Stay on main. That is the release branch.
+git checkout main
 
 # Verify current branch
 git branch --show-current
@@ -211,29 +206,6 @@ This will:
 
 ---
 
-## Private HP 6000 Pro Legacy Build
-
-The normal release build requires SSE4.2 and POPCNT because it uses
-PySide6/Qt 6.11+. For the private HP 6000 Pro build only:
-
-```bash
-cd ~/abcs
-chmod +x build_linux_legacy_hp.sh
-./build_linux_legacy_hp.sh
-```
-
-The script requires Python 3.10 and:
-- Creates a separate `.venv-legacy` environment.
-- Uses PySide6/Qt 6.3.2, before Qt adopted the SSE4.2/POPCNT baseline.
-- Writes the executable and installer assets to `dist-legacy-hp/`.
-- Does not change the release virtual environment or `dist/` output.
-
-Copy the entire `dist-legacy-hp/` folder to the HP and run its
-`install_abcs.sh`. This private package lacks the Qt 6.11 accessibility
-improvements and must not be distributed as the normal AbCS release.
-
----
-
 ## Distribution
 
 ### Single File Distribution
@@ -310,10 +282,7 @@ sudo apt install -y libmad0 libvorbis0a libflac8
 
 ### Illegal Instruction (Core Dumped)
 
-Your CPU doesn't support the required instruction set. Use the legacy CPU script:
-```bash
-./fix_linux_legacy_cpu_env.sh
-```
+The release build needs a processor with SSE4.2 and POPCNT. An older processor cannot run this Qt build.
 
 ---
 
@@ -322,7 +291,7 @@ Your CPU doesn't support the required instruction set. Use the legacy CPU script
 | Task | Command |
 |------|---------|
 | Clone repo | `git clone https://github.com/cfdrakeNS/AbCS_Audiobook_Collector_Scanner.git abcs` |
-| Switch branch | `git checkout final` |
+| Switch branch | `git checkout main` |
 | Create venv | `python3 -m venv venv` |
 | Activate venv | `source venv/bin/activate` |
 | Install deps | `pip install -r requirements.txt` |
